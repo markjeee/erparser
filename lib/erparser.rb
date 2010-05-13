@@ -381,7 +381,7 @@ module ErParser
         request_options[:headers]['If-None-Match'] = ci[:etag]
       end
       
-      r = Typhoeus::Request.new(url, :timeout => 1000 * 3)
+      r = Typhoeus::Request.new(url, :timeout => 1000 * 5)
       r.on_complete do |resp|
         replied += 1
         progress = "#{replied}/#{clusters.size}"

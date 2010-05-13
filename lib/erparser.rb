@@ -434,7 +434,7 @@ module ErParser
     source_mtimes = [ ]
     requests = [ ]
     urls.each do |url|
-      r = Typhoeus::Request.new(url, :method => :head, :timeout => 1000 * 10)
+      r = Typhoeus::Request.new(url, :method => :head, :timeout => 1000 * 5)
       requests.push(r)
       h.queue(r)
     end

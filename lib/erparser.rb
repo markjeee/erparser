@@ -283,6 +283,8 @@ module ErParser
         break if success == this_batch.size
         break if tries_left <= 0
         tries_left -= 1
+        
+        puts "  - Retrying (left: #{tries_left}) only #{success} out of #{this_batch.size}"
       end
 
       batch_no += 1

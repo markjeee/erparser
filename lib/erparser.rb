@@ -384,7 +384,7 @@ module ErParser
         request_options[:headers]['If-None-Match'] = ci[:etag]
       end
       
-      r = Typhoeus::Request.new(url, :timeout => 1000 * 15)
+      r = Typhoeus::Request.new(url, :timeout => 1000 * 120)
       r.on_complete do |resp|
         replied += 1
         progress = "#{replied}/#{clusters.size}"
@@ -434,7 +434,7 @@ module ErParser
     source_mtimes = [ ]
     requests = [ ]
     urls.each do |url|
-      r = Typhoeus::Request.new(url, :method => :head, :timeout => 1000 * 15)
+      r = Typhoeus::Request.new(url, :method => :head, :timeout => 1000 * 120)
       requests.push(r)
       h.queue(r)
     end

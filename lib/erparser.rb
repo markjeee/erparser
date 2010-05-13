@@ -19,6 +19,7 @@ require 'fastercsv'
 require 'typhoeus'
 
 module ErParser
+  CONCURRENCY = 10
   DOWNLOAD_BATCH_SIZE = 100
   ERSOURCE_URL = "http://electionresults.ibanangayon.ph"
 
@@ -28,16 +29,12 @@ module ErParser
 
     dest_dir = argv[0]
     clusters_file = argv[1]
-    unique_positions_file = argv[2]
     all_positions_file = argv[3]
-    unique_candidates_file = argv[4]
     all_positions_candidates_file = argv[5]
     
     raise "Please specify the directory mirror of the election results website" if dest_dir.nil?
     raise "Please specify a target path for the clusters_file" if clusters_file.nil?
-    raise "Please specify a target path for unique positions file" if unique_positions_file.nil?
     raise "Please specify a target path for all positions file" if all_positions_file.nil?
-    raise "Please specify a target path for unique candidates file" if unique_candidates_file.nil?
     raise "Please specify a target path for all positions candidates file" if all_positions_candidates_file.nil?
     
     # parse clusters file
@@ -51,43 +48,88 @@ module ErParser
 
     puts "* Found #{clusters_for_parsing.size} clusters for parsing"
 
+    # for debugging purposes
+    # clusters_for_parsing = clusters_for_parsing.slice(0, 100)
+    
+    concurrency_count = CONCURRENCY
+    total_count = clusters_for_parsing.size
+    perslice_count = (total_count / concurrency_count).ceil
+
+    puts "Concurrency count: #{concurrency_count}"
+    puts "Total count: #{total_count}"
+    puts "Per slice: #{perslice_count}"
+    
+    (1..concurrency_count).each do |part_no|
+      slice_start = (part_no - 1) * perslice_count
+      puts "Working on slice: #{slice_start}, #{perslice_count}"
+
+      Process.fork do      
+        child_options = {
+          :dest_dir => dest_dir,
+          :all_positions_file => "#{all_positions_file}.part#{part_no}",
+          :all_positions_candidates_file => "#{all_positions_candidates_file}.part#{part_no}"
+        }
+        
+        parse_for_positions_child_worker(clusters_for_parsing.slice(slice_start, perslice_count), child_options)
+      end
+    end
+
+    Process.waitall
+
+    clusters_file_h = nil
+    all_positions_file_h = nil
+    all_positions_candidates_file_h = nil
+    
+    begin
+      all_positions_file_h = File.open(all_positions_file, "w")
+      all_positions_candidates_file_h = File.open(all_positions_candidates_file, "w")
+      
+      (1..concurrency_count).each do |part_no|
+        child_options = {
+          :dest_dir => dest_dir,
+          :all_positions_file => "#{all_positions_file}.part#{part_no}",
+          :all_positions_candidates_file => "#{all_positions_candidates_file}.part#{part_no}"
+        }
+
+        all_positions_file_h.write(File.read(child_options[:all_positions_file]))
+        all_positions_candidates_file_h.write(File.read(child_options[:all_positions_candidates_file]))
+      end
+    ensure
+      all_positions_file_h.close unless all_positions_file_h.nil?
+      all_positions_candidates_file_h.close unless all_positions_candidates_file_h.nil?
+    end
+  end
+
+  def self.parse_for_positions_child_worker(clusters_for_parsing, options = { })
+    dest_dir = options[:dest_dir]
+    clusters_file = options[:clusters_file]
+    all_positions_file = options[:all_positions_file]
+    all_positions_candidates_file = options[:all_positions_candidates_file]
+    
     worked = 0
-    unique_positions = { }
-    unique_candidates = { }
     all_positions = [ ]
     all_positions_candidates = [ ]
     
-    # clusters_for_parsing.slice(0, 100).each do |cdata|
     clusters_for_parsing.each do |cdata|
       html_file = cdata[1]
       local_file = File.join(dest_dir, html_file)
-
+      
       if File.exists?(local_file)
         worked += 1
         
         puts "* (#{worked}/#{clusters_for_parsing.size}) Working on #{html_file}"
         positions = parse_positions(local_file, cdata)
-
+        
         unless positions.empty?
           puts "    + Found #{positions.size} positions"
-
+          
           positions.each do |po|
-            unless unique_positions.include?(po[1])
-              unique_positions[po[1]] = po[2]
-            end
-
             candidates = po.pop
             candidates.each do |can|
-              pos_can_key = "#{po[1]}-#{can[0]}"
-
-              unless unique_candidates.include?(pos_can_key)
-                unique_candidates[pos_can_key] = [ po[1], can[0], can[1] ]
-              end
-
               all_positions_candidates.push([ po[0], po[1], can[0], can[1], can[2], can[3] ])
             end
           end
-
+          
           all_positions += positions
         else
           puts "    + Found no positions"
@@ -96,9 +138,9 @@ module ErParser
         puts "* Skippng on #{html_file}, not found"
       end
     end
-
+    
     puts "* Worked on #{worked} clusters out of #{clusters_for_parsing.size}"
-
+    
     puts "* Found #{all_positions.size} total positions"
     FasterCSV.open(all_positions_file, 'w') do |f|
       all_positions.each do |po|
@@ -106,34 +148,20 @@ module ErParser
       end
     end
     
-    puts "* Found #{unique_positions.size} unique positions"
-    FasterCSV.open(unique_positions_file, 'w') do |f|
-      unique_positions.each do |pid, ptitle|
-        f << [ pid, ptitle ]
-      end
-    end
-
-    puts "* Found #{unique_candidates.size} unique candidates"
-    FasterCSV.open(unique_candidates_file, 'w') do |f|
-      unique_candidates.each do |pos_can_key, pc_data|
-        f << pc_data
-      end
-    end
-
     puts "* Found #{all_positions_candidates.size} unique positions and candidates"
     FasterCSV.open(all_positions_candidates_file, 'w') do |f|
       all_positions_candidates.each do |pc_data|
         f << pc_data
       end
-    end    
+    end
   end
-
+  
   def self.parse_positions(local_file, cdata)
     xml_d = nil
     File.open(local_file, 'r') do |f|
       xml_d = Nokogiri::HTML(f.read)
     end
-
+    
     positions = [ ]
     unless xml_d.nil?
       xml_d.search('div.boxheader center').each do |boxh|
@@ -147,7 +175,7 @@ module ErParser
           
           boxh.search('a').each do |link|
             position_title = link.content
-
+            
             # javascript:Show(1050335);
             if link['href'] =~ /\Ajavascript\:Show\((\d+)\)\;\Z/
               html_id = $~[1]
@@ -191,7 +219,7 @@ module ErParser
           end
           
           unless xml_file.nil? || candidates.nil?
-            puts "    + Found #{position_id}, #{position_title}, #{xml_file}, #{html_id}, #{candidates.size} candidate(s)"
+            # puts "    + Found #{position_id}, #{position_title}, #{xml_file}, #{html_id}, #{candidates.size} candidate(s)"
             positions.push([ cluster_id, position_id, position_title, xml_file, html_id, candidates ])
           else
             puts "    + New format? It's not not available, but can't parse it!"
@@ -247,6 +275,8 @@ module ErParser
 
       puts "* Downloading batch \##{batch_no} elapsed time: #{(Time.now - start_time).to_i} sec(s)"
       puts "  - #{this_batch.collect{ |cd| cd[0] }.join(', ')}"
+
+      Timeout
       download_clusters_per_batch(dest_dir, this_batch, DOWNLOAD_BATCH_SIZE)
 
       batch_no += 1
@@ -338,7 +368,7 @@ module ErParser
         request_options[:headers]['If-None-Match'] = ci[:etag]
       end
       
-      r = Typhoeus::Request.new(url)
+      r = Typhoeus::Request.new(url, :timeout => 1000 * 3)
       r.on_complete do |resp|
         replied += 1
         progress = "#{replied}/#{clusters.size}"
@@ -349,7 +379,7 @@ module ErParser
           etag = resp.headers_hash['ETag']
           length = resp.headers_hash['Content-Length']
           
-          puts "    + (#{progress}) writing #{html_file}, #{length}, #{source_mtime}, #{etag}"
+          puts "    + (#{progress} - #{resp.time}s) writing #{html_file}, #{length}, #{source_mtime}, #{etag}"
           File.open(local_file, "w") { |f| f.write(resp.body) }
           
           # let's write the etag for later checking

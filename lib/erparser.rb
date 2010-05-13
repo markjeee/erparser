@@ -19,7 +19,7 @@ require 'fastercsv'
 require 'typhoeus'
 
 module ErParser
-  DOWNLOAD_BATCH_SIZE = 50
+  DOWNLOAD_BATCH_SIZE = 100
   ERSOURCE_URL = "http://electionresults.ibanangayon.ph"
 
   # bin/parse_positions ../electionresults.ibanangayon.ph/ var/found_clusters.csv var/unique_positions.csv var/all_positions.csv

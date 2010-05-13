@@ -395,7 +395,7 @@ module ErParser
           etag = resp.headers_hash['ETag']
           length = resp.headers_hash['Content-Length']
           
-          puts "    + (#{progress} - #{resp.time}s) writing #{html_file}, #{length}, #{source_mtime}, #{etag}"
+          puts "    + (#{progress} - #{sprintf('%.2f', resp.time)}s) writing #{html_file}, #{length}, #{source_mtime}, #{etag}"
           File.open(local_file, "w") { |f| f.write(resp.body) }
           
           # let's write the etag for later checking

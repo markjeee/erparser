@@ -276,7 +276,7 @@ module ErParser
       puts "* Downloading batch \##{batch_no} elapsed time: #{(Time.now - start_time).to_i} sec(s)"
       puts "  - #{this_batch.collect{ |cd| cd[0] }.join(', ')}"
 
-      tries_left = 3
+      tries_left = 5
       loop do
         success = download_clusters_per_batch(dest_dir, this_batch, DOWNLOAD_BATCH_SIZE)
 
@@ -322,6 +322,9 @@ module ErParser
     puts "  - Downloading modification times"
     source_mtimes = get_clusters_modification_time(clusters_info.collect { |cid, ci| ci[:source_url] })
 
+    # force a re-try if we're not able to get all files
+    return -1 if source_mtimes.size != clusters_info.size
+    
     clusters_for_dl = [ ]
     clusters_info.each do |cid, ci|
       mtime, etag = source_mtimes.shift
@@ -431,7 +434,7 @@ module ErParser
     source_mtimes = [ ]
     requests = [ ]
     urls.each do |url|
-      r = Typhoeus::Request.new(url, :method => :head, :timeout => 1000 * 20)
+      r = Typhoeus::Request.new(url, :method => :head, :timeout => 1000 * 10)
       requests.push(r)
       h.queue(r)
     end
@@ -449,6 +452,9 @@ module ErParser
       elsif resp.code == 404
         puts "    - 404! #{r.url}"
         source_mtimes.push([ nil, nil ])
+      elsif resp.code == 0
+        puts "    - too long! #{r.url}"
+        break
       else
         raise "Got HTTP response #{r.url}: #{resp.code}, #{resp.body}"
       end

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+rsync -avzc --progress --stats -h mark-sidekick:/opt/tweetitow/electionresults.ibanangayon.ph/ /opt/tweetitow/electionresults.ibanangayon.ph

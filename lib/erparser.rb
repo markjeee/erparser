@@ -403,13 +403,13 @@ module ErParser
 
           success += 1
         elsif resp.code == 304
-          puts "   + (#{progress}) file #{html_file} hasn't changed"
+          puts "    + (#{progress}) file #{html_file} hasn't changed"
 
           success += 1
         elsif resp.code == 404
-          puts "   + (#{progress}) 404! #{url}"
+          puts "    + (#{progress}) 404! #{url}"
         elsif resp.code == 0
-          puts "   + (#{progress}) took to long! #{url}"
+          puts "    + (#{progress}) took to long! #{url}"
         else
           raise "Got HTTP response #{r.url}: #{resp.code}, #{resp.body}"
         end

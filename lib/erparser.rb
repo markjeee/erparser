@@ -19,18 +19,27 @@ require 'fastercsv'
 require 'typhoeus'
 
 module ErParser
-  DOWNLOAD_BATCH_SIZE = 20
+  DOWNLOAD_BATCH_SIZE = 50
   ERSOURCE_URL = "http://electionresults.ibanangayon.ph"
 
+  # bin/parse_positions ../electionresults.ibanangayon.ph/ var/found_clusters.csv var/unique_positions.csv var/all_positions.csv
   def self.parse_for_positions!(argv)
     options = parse_arguments(argv)
 
     dest_dir = argv[0]
     clusters_file = argv[1]
-
+    unique_positions_file = argv[2]
+    all_positions_file = argv[3]
+    unique_candidates_file = argv[4]
+    all_positions_candidates_file = argv[5]
+    
     raise "Please specify the directory mirror of the election results website" if dest_dir.nil?
     raise "Please specify a target path for the clusters_file" if clusters_file.nil?
-
+    raise "Please specify a target path for unique positions file" if unique_positions_file.nil?
+    raise "Please specify a target path for all positions file" if all_positions_file.nil?
+    raise "Please specify a target path for unique candidates file" if unique_candidates_file.nil?
+    raise "Please specify a target path for all positions candidates file" if all_positions_candidates_file.nil?
+    
     # parse clusters file
     found_clusters = parse_clusters_file(clusters_file)
 
@@ -43,21 +52,80 @@ module ErParser
     puts "* Found #{clusters_for_parsing.size} clusters for parsing"
 
     worked = 0
+    unique_positions = { }
+    unique_candidates = { }
+    all_positions = [ ]
+    all_positions_candidates = [ ]
+    
+    # clusters_for_parsing.slice(0, 100).each do |cdata|
     clusters_for_parsing.each do |cdata|
       html_file = cdata[1]
       local_file = File.join(dest_dir, html_file)
 
       if File.exists?(local_file)
-        puts "* Working on #{html_file}"
-        parse_positions(local_file, cdata)
-        
         worked += 1
+        
+        puts "* (#{worked}/#{clusters_for_parsing.size}) Working on #{html_file}"
+        positions = parse_positions(local_file, cdata)
+
+        unless positions.empty?
+          puts "    + Found #{positions.size} positions"
+
+          positions.each do |po|
+            unless unique_positions.include?(po[1])
+              unique_positions[po[1]] = po[2]
+            end
+
+            candidates = po.pop
+            candidates.each do |can|
+              pos_can_key = "#{po[1]}-#{can[0]}"
+
+              unless unique_candidates.include?(pos_can_key)
+                unique_candidates[pos_can_key] = [ po[1], can[0], can[1] ]
+              end
+
+              all_positions_candidates.push([ po[0], po[1], can[0], can[1], can[2], can[3] ])
+            end
+          end
+
+          all_positions += positions
+        else
+          puts "    + Found no positions"
+        end
       else
         puts "* Skippng on #{html_file}, not found"
       end
     end
 
-    puts "* Worked on #{worked} clusters"
+    puts "* Worked on #{worked} clusters out of #{clusters_for_parsing.size}"
+
+    puts "* Found #{all_positions.size} total positions"
+    FasterCSV.open(all_positions_file, 'w') do |f|
+      all_positions.each do |po|
+        f << po
+      end
+    end
+    
+    puts "* Found #{unique_positions.size} unique positions"
+    FasterCSV.open(unique_positions_file, 'w') do |f|
+      unique_positions.each do |pid, ptitle|
+        f << [ pid, ptitle ]
+      end
+    end
+
+    puts "* Found #{unique_candidates.size} unique candidates"
+    FasterCSV.open(unique_candidates_file, 'w') do |f|
+      unique_candidates.each do |pos_can_key, pc_data|
+        f << pc_data
+      end
+    end
+
+    puts "* Found #{all_positions_candidates.size} unique positions and candidates"
+    FasterCSV.open(all_positions_candidates_file, 'w') do |f|
+      all_positions_candidates.each do |pc_data|
+        f << pc_data
+      end
+    end    
   end
 
   def self.parse_positions(local_file, cdata)
@@ -66,9 +134,74 @@ module ErParser
       xml_d = Nokogiri::HTML(f.read)
     end
 
+    positions = [ ]
     unless xml_d.nil?
-      
+      xml_d.search('div.boxheader center').each do |boxh|
+        unless boxh.content =~ /\AThere is not available/
+          position_title = nil
+          position_id = nil
+          cluster_id = nil
+          html_id = nil
+          xml_file = nil
+          candidates = nil
+          
+          boxh.search('a').each do |link|
+            position_title = link.content
+
+            # javascript:Show(1050335);
+            if link['href'] =~ /\Ajavascript\:Show\((\d+)\)\;\Z/
+              html_id = $~[1]
+            end
+          end
+
+          unless html_id.nil?
+            query = "//div[@id = '#{html_id}']//object//embed"
+            xml_d.search(query).each do |embed|
+              # &dataURL=res_299001_5524076.xml&chartWidth=513&chartHeight=300
+              if embed["flashvars"] =~ /\A\&dataURL=res\_(\d+)\_(\d+)\.xml\&chartWidth\=.+\Z/
+                position_id = $~[1]
+                cluster_id = $~[2]
+                xml_file = "res_#{position_id}_#{cluster_id}.xml"
+              else
+                raise "Got: #{embed['flashvars']}"
+              end
+            end
+          end
+
+          unless xml_file.nil?
+            candidates = [ ]
+            query = "//div[@id = '#{html_id}']//table//tr[@class = 'tblightrow']"
+            xml_d.search(query).each do |tr|
+              candidate_data = [ ]
+              tr.search("td[@class = 'lightRowContent']//span").each do |span|
+                candidate_data.push(span.content)
+              end
+
+              # only parse candidate data if it contain four rows
+              # <tr>
+              #   <th class="boxtd_big" align="center">Candidate</th>
+              #   <th class="boxtd_big" align="center">Party</th>
+              #   <th class="boxtd_big" align="center">Votes</th>
+              #   <th class="boxtd_big" align="center">Percentage</th>
+              # </tr>              
+              if candidate_data.size == 4
+                candidates.push(candidate_data)
+              end
+            end
+          end
+          
+          unless xml_file.nil? || candidates.nil?
+            puts "    + Found #{position_id}, #{position_title}, #{xml_file}, #{html_id}, #{candidates.size} candidate(s)"
+            positions.push([ cluster_id, position_id, position_title, xml_file, html_id, candidates ])
+          else
+            puts "    + New format? It's not not available, but can't parse it!"
+            break
+          end
+        end
+      end
     end
+    
+    positions
   end
   
   def self.parse_clusters_file(clusters_file)

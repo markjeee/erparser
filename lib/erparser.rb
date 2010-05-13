@@ -276,7 +276,6 @@ module ErParser
       puts "* Downloading batch \##{batch_no} elapsed time: #{(Time.now - start_time).to_i} sec(s)"
       puts "  - #{this_batch.collect{ |cd| cd[0] }.join(', ')}"
 
-      Timeout
       download_clusters_per_batch(dest_dir, this_batch, DOWNLOAD_BATCH_SIZE)
 
       batch_no += 1

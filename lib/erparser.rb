@@ -60,7 +60,6 @@ module ErParser
       download_clusters_per_batch(dest_dir, this_batch, DOWNLOAD_BATCH_SIZE)
 
       batch_no += 1
-      break
     end
   end
 

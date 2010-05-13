@@ -157,8 +157,9 @@ module ErParser
           # let's get the source time from source site
           source_mtime = to_time(resp.headers_hash['Last-Modified'])
           etag = resp.headers_hash['ETag']
+          length = resp.headers_hash['Content-Length']
           
-          puts "    + (#{progress}) writing #{html_file}, #{source_mtime}, #{etag}"
+          puts "    + (#{progress}) writing #{html_file}, #{length}, #{source_mtime}, #{etag}"
           File.open(local_file, "w") { |f| f.write(resp.body) }
           
           # let's write the etag for later checking

@@ -276,13 +276,21 @@ module ErParser
       puts "* Downloading batch \##{batch_no} elapsed time: #{(Time.now - start_time).to_i} sec(s)"
       puts "  - #{this_batch.collect{ |cd| cd[0] }.join(', ')}"
 
-      download_clusters_per_batch(dest_dir, this_batch, DOWNLOAD_BATCH_SIZE)
+      tries_left = 3
+      loop do
+        success = download_clusters_per_batch(dest_dir, this_batch, DOWNLOAD_BATCH_SIZE)
+
+        break if success == this_batch.size
+        break if tries_left <= 0
+        tries_left -= 1
+      end
 
       batch_no += 1
     end
   end
 
   def self.download_clusters_per_batch(dest_dir, clusters, batch_size = DOWNLOAD_BATCH_SIZE)
+    success = 0
     clusters_info = { }
     
     clusters.each do |cdata|
@@ -324,29 +332,32 @@ module ErParser
           mode = "N"
           clusters_for_dl.push(ci)
           
-          # etag mismatch
+        # etag mismatch
         elsif ci[:etag] != ci[:source_etag]
           ci[:mode] = 'U'
           clusters_for_dl.push(ci)
           
-          # mtime mismatch
+        # mtime mismatch
         elsif ci[:mtime] < ci[:source_mtime]
           ci[:mode] = 'U'
           clusters_for_dl.push(ci)
           
-          # else do nothing
+        # else do nothing
         else
           mode = nil
+          success += 1
         end
       end
     end
 
     unless clusters_for_dl.empty?
       puts "  - Downloading #{clusters_for_dl.size} clusters"
-      get_clusters_html_file(dest_dir, clusters_for_dl)
+      success += get_clusters_html_file(dest_dir, clusters_for_dl)
     else
       puts "  - All clusters in this batch are up to date"
     end
+
+    success
   end
 
   def self.get_clusters_html_file(dest_dir, clusters)
@@ -354,6 +365,7 @@ module ErParser
 
     requests = [ ]
     replied = 0
+    success = 0
     clusters.each do |ci|
       html_file = ci[:html_file]
       etag_file = File.join(dest_dir, "#{html_file}.etag")
@@ -386,10 +398,16 @@ module ErParser
           
           # let's set the mtime of the local file
           File.utime(Time.now, source_mtime.getlocal, local_file)
+
+          success += 1
         elsif resp.code == 304
           puts "   + (#{progress}) file #{html_file} hasn't changed"
+
+          success += 1
         elsif resp.code == 404
           puts "   + (#{progress}) 404! #{url}"
+        elsif resp.code == 0
+          puts "   + (#{progress}) took to long! #{url}"
         else
           raise "Got HTTP response #{r.url}: #{resp.code}, #{resp.body}"
         end
@@ -402,7 +420,7 @@ module ErParser
     rt = benchmark { h.run }
     puts(sprintf("    * took %.5f sec(s)", rt))
 
-    requests
+    success
   end
   
   def self.get_clusters_modification_time(urls)
@@ -411,7 +429,7 @@ module ErParser
     source_mtimes = [ ]
     requests = [ ]
     urls.each do |url|
-      r = Typhoeus::Request.new(url, :method => :head)
+      r = Typhoeus::Request.new(url, :method => :head, :timeout => 1000 * 20)
       requests.push(r)
       h.queue(r)
     end

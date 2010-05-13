@@ -21,23 +21,62 @@ require 'typhoeus'
 module ErParser
   DOWNLOAD_BATCH_SIZE = 20
   ERSOURCE_URL = "http://electionresults.ibanangayon.ph"
-  
-  # e.g. bin/download_clusters var/found_clusters.csv
-  def self.download_clusters!(argv)
+
+  def self.parse_for_positions!(argv)
     options = parse_arguments(argv)
 
     dest_dir = argv[0]
-    cluster_file = argv[1]
-    start_batch = argv[2]
+    clusters_file = argv[1]
 
     raise "Please specify the directory mirror of the election results website" if dest_dir.nil?
-    raise "Please specify a target path for the cluster_file" if cluster_file.nil?
+    raise "Please specify a target path for the clusters_file" if clusters_file.nil?
 
+    # parse clusters file
+    found_clusters = parse_clusters_file(clusters_file)
+
+    clusters_for_parsing = [ ]
+    found_clusters.each do |cdata|
+      cluster_name = cdata.last
+      clusters_for_parsing.push(cdata) if cluster_name =~ /\ACP\s+/
+    end
+
+    puts "* Found #{clusters_for_parsing.size} clusters for parsing"
+
+    worked = 0
+    clusters_for_parsing.each do |cdata|
+      html_file = cdata[1]
+      local_file = File.join(dest_dir, html_file)
+
+      if File.exists?(local_file)
+        puts "* Working on #{html_file}"
+        parse_positions(local_file, cdata)
+        
+        worked += 1
+      else
+        puts "* Skippng on #{html_file}, not found"
+      end
+    end
+
+    puts "* Worked on #{worked} clusters"
+  end
+
+  def self.parse_positions(local_file, cdata)
+    xml_d = nil
+    File.open(local_file, 'r') do |f|
+      xml_d = Nokogiri::HTML(f.read)
+    end
+
+    unless xml_d.nil?
+      
+    end
+  end
+  
+  def self.parse_clusters_file(clusters_file)
     found_clusters = [ ]
-
-    puts "* Parsing #{cluster_file}"
+    
+    puts "* Parsing #{clusters_file}"
     rt = benchmark do
-      FasterCSV.foreach(cluster_file) do |row|
+      FasterCSV.foreach(clusters_file) do |row|
         found_clusters.push(row)
       end
     end
@@ -45,21 +84,41 @@ module ErParser
 
     puts "* Found #{found_clusters.size} from CSV file"
 
+    found_clusters
+  end
+  
+  # e.g. bin/download_clusters var/found_clusters.csv
+  def self.download_clusters!(argv)
+    options = parse_arguments(argv)
+
+    dest_dir = argv[0]
+    clusters_file = argv[1]
+    start_batch = argv[2]
+
+    raise "Please specify the directory mirror of the election results website" if dest_dir.nil?
+    raise "Please specify a target path for the cluster_file" if clusters_file.nil?
+
+    # parse clusters file
+    found_clusters = parse_clusters_file(clusters_file)
+
     unless start_batch.nil?
       found_clusters.slice!(0, start_batch.to_i * DOWNLOAD_BATCH_SIZE)
       batch_no = start_batch.to_i
     else
       batch_no = 1
     end
-    
+
+    start_time = Time.now
     while !found_clusters.empty?
       this_batch = found_clusters.slice!(0, DOWNLOAD_BATCH_SIZE)
 
-      puts "* Downloading batch \##{batch_no}"
+      puts "* Downloading batch \##{batch_no} elapsed time: #{(Time.now - start_time).to_i} sec(s)"
       puts "  - #{this_batch.collect{ |cd| cd[0] }.join(', ')}"
       download_clusters_per_batch(dest_dir, this_batch, DOWNLOAD_BATCH_SIZE)
 
       batch_no += 1
+
+      break
     end
   end
 

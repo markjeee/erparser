@@ -54,13 +54,13 @@ Ok, in a nutshell:
 * Download the files, use the parsed_clusters.csv.gz file as a seed
   for the list of files to download.
 
-    gunzip var/parsed_clusters.csv.gz var/parsed_clusters.csv
+      gunzip var/parsed_clusters.csv.gz var/parsed_clusters.csv
 
 * Then run the download script:
 
-    mkdir electionresults.ibanangayon.ph
-    bin/download_clusters electionresults.ibanangayon.ph/ \
-                          var/parsed_clusters.csv
+      mkdir electionresults.ibanangayon.ph
+      bin/download_clusters electionresults.ibanangayon.ph/ \
+                            var/parsed_clusters.csv
 
 * Sit back, relax. From scratch and with a big enough bandwidth, it
   should take you about at least 8 hours to download everything. The
@@ -68,10 +68,10 @@ Ok, in a nutshell:
   which batch it last stopped. To avoid gaps, just re-download from
   one batch before.
 
-    bin/download_clusters electionresults.ibanangayon.ph/ \
-                          var/parsed_clusters.csv \
-                          200
-
+      bin/download_clusters electionresults.ibanangayon.ph/ \
+                            var/parsed_clusters.csv \
+                            200
+                          
   From my experience, i think that's at least 700+ batches to download
   everything.
 
@@ -80,10 +80,10 @@ Ok, in a nutshell:
   hours on a quad-core, 8G machine. So best to go out or watch a movie
   or something.
 
-    bin/parse_positions electionresults.ibanangayon.ph/ \
-                        var/parsed_clusters.csv \
-                        var/all_positions.csv \
-                        var/all_positions_candidates.csv
+     bin/parse_positions electionresults.ibanangayon.ph/ \
+                         var/parsed_clusters.csv \
+                         var/all_positions.csv \
+                         var/all_positions_candidates.csv
 
 * After everything is done, you should have two CSV files under the
   var directory.
@@ -97,33 +97,39 @@ For the output formats, they are as follows:
 *all_positions_candidates.csv*
 
 Sample:
-    7704011,199001,"VILLAR, Manuel Jr B.",NACIONALISTA PARTY,196,28.49%
+
+        7704011,199001,"VILLAR, Manuel Jr B.",NACIONALISTA PARTY,196,28.49%
 
 Format:
-    cluster_id, position_id, candidate, vote_count, vote_percent
+
+        cluster_id, position_id, candidate, vote_count, vote_percent
 
 *all_positions.csv*
 
 Sample:
-    7704011,199001,PRESIDENT of PHILIPPINES,res_199001_7704011.xml,1050334
+
+        7704011,199001,PRESIDENT of PHILIPPINES,res_199001_7704011.xml,1050334
 
 Format:
-    cluster_id, position_id, position_title, xml data file, html id (used
-    in the <div id="1050334"> in the HTML file)
+
+        cluster_id, position_id, position_title, xml data file, html id (used
+        in the <div id="1050334"> in the HTML file)
 
 *parsed_clusters.csv*
 
 Sample: 
-    7704011,res_reg7704011.html,0,res_reg0.html,The
-    Philippines,9706000,res_reg9706000.html,III,7700000,
-    res_reg7700000.html,AURORA,7704000,res_reg7704000.html,
-    DINALUNGAN,7704011,res_reg7704011.html,"CP 11 0031A, 0031B, 
-    0032A, 0032B, 0033A, 0033B, 0034A"
+
+        7704011,res_reg7704011.html,0,res_reg0.html,The
+        Philippines,9706000,res_reg9706000.html,III,7700000,
+        res_reg7700000.html,AURORA,7704000,res_reg7704000.html,
+        DINALUNGAN,7704011,res_reg7704011.html,"CP 11 0031A, 0031B, 
+        0032A, 0032B, 0033A, 0033B, 0034A"
     
 Format:
-    cluster_id, cluster_html_file, level1_cluster_id,
-    level1_cluster_html_file, level1_cluster_name, ... leveln_cluster_id,
-    leveln_cluster_html_file, leveln_cluster_name
+
+        cluster_id, cluster_html_file, level1_cluster_id,
+        level1_cluster_html_file, level1_cluster_name, ... leveln_cluster_id,
+        leveln_cluster_html_file, leveln_cluster_name
 
 # Scripts
 

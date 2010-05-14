@@ -60,8 +60,8 @@ and their heirarchy in the region.
 
 Sample execution:
 
-> bin/parse_clusters electionresults.ibanangayon.ph/ \
-                     var/parsed_clusters.csv
+       bin/parse_clusters electionresults.ibanangayon.ph/ \
+                          var/parsed_clusters.csv
 
 *bin/download_clusters*
 
@@ -77,8 +77,8 @@ This script *requires* a parsed_cluster.csv file.
 
 Sample execution:
 
-> bin/download_clusters electionresults.ibanangayon.ph/ \
-                        var/parsed_clusters.csv 1
+       bin/download_clusters electionresults.ibanangayon.ph/ \
+                             var/parsed_clusters.csv 1
 
 1 here signifies the batch. Just in case you want to start downloading
 in the middle of the entire list. It's optional. If it's not
@@ -98,7 +98,7 @@ This script *requires* a parsed_cluster.csv file.
 
 Sample execution:
 
-> bin/parse_positions electionresults.ibanangayon.ph/ \
-                      var/parsed_clusters.csv \
-                      var/all_postions.csv \
-                      var/all_positions_candidates.csv
+       bin/parse_positions electionresults.ibanangayon.ph/ \
+                           var/parsed_clusters.csv \
+                           var/all_postions.csv \
+                           var/all_positions_candidates.csv

@@ -30,12 +30,12 @@ module ErParser
     clusters_file = argv[1]
     all_positions_file = argv[2]
     all_positions_candidates_file = argv[3]
-    
+
     raise "Please specify the directory mirror of the election results website" if dest_dir.nil?
     raise "Please specify a target path for the clusters_file" if clusters_file.nil?
     raise "Please specify a target path for all positions file" if all_positions_file.nil?
     raise "Please specify a target path for all positions candidates file" if all_positions_candidates_file.nil?
-    
+
     # parse clusters file
     found_clusters = parse_clusters_file(clusters_file)
 
@@ -49,7 +49,7 @@ module ErParser
 
     # for debugging purposes
     clusters_for_parsing = clusters_for_parsing.slice(0, 100)
-    
+
     concurrency_count = CONCURRENCY
     total_count = clusters_for_parsing.size
     perslice_count = (total_count / concurrency_count).ceil
@@ -57,18 +57,18 @@ module ErParser
     puts "Concurrency count: #{concurrency_count}"
     puts "Total count: #{total_count}"
     puts "Per slice: #{perslice_count}"
-    
+
     (1..concurrency_count).each do |part_no|
       slice_start = (part_no - 1) * perslice_count
       puts "Working on slice: #{slice_start}, #{perslice_count}"
 
-      Process.fork do      
+      Process.fork do
         child_options = {
           :dest_dir => dest_dir,
           :all_positions_file => "#{all_positions_file}.part#{part_no}",
           :all_positions_candidates_file => "#{all_positions_candidates_file}.part#{part_no}"
         }
-        
+
         parse_for_positions_child_worker(clusters_for_parsing.slice(slice_start, perslice_count), child_options)
       end
     end
@@ -78,11 +78,11 @@ module ErParser
     clusters_file_h = nil
     all_positions_file_h = nil
     all_positions_candidates_file_h = nil
-    
+
     begin
       all_positions_file_h = File.open(all_positions_file, "w")
       all_positions_candidates_file_h = File.open(all_positions_candidates_file, "w")
-      
+
       (1..concurrency_count).each do |part_no|
         child_options = {
           :dest_dir => dest_dir,
@@ -104,39 +104,39 @@ module ErParser
     clusters_file = options[:clusters_file]
     all_positions_file = options[:all_positions_file]
     all_positions_candidates_file = options[:all_positions_candidates_file]
-    
+
     worked = 0
     all_positions_h = nil
     all_positions_size = 0
     all_positions_candidates_h = nil
     all_positions_candidates_size = 0
-    
+
     begin
       all_positions_h = FasterCSV.open(all_positions_file, 'w')
       all_positions_size = 0
       all_positions_candidates_h = FasterCSV.open(all_positions_candidates_file, 'w')
       all_positions_candidates_size = 0
-      
+
       clusters_for_parsing.each do |cdata|
         html_file = cdata[1]
         local_file = File.join(dest_dir, html_file)
-        
+
         if File.exists?(local_file)
           worked += 1
-          
+
           puts "* (#{worked}/#{clusters_for_parsing.size}) Working on #{html_file}"
           positions = parse_positions(local_file, cdata)
-          
+
           unless positions.empty?
             puts "    + Found #{positions.size} positions"
-            
+
             positions.each do |po|
               candidates = po.pop
               candidates.each do |can|
                 all_positions_candidates_h << [ po[0], po[1], can[0], can[1], can[2], can[3] ]
                 all_positions_candidates_size += 1
               end
-              
+
               all_positions_h << po
               all_positions_size += 1
             end
@@ -151,18 +151,18 @@ module ErParser
       all_positions_h.close unless all_positions_h.nil?
       all_positions_candidates_h.close unless all_positions_candidates_h.nil?
     end
-    
+
     puts "* Worked on #{worked} clusters out of #{clusters_for_parsing.size}"
     puts "* Found #{all_positions_size} total positions"
     puts "* Found #{all_positions_candidates_size} unique positions and candidates"
   end
-  
+
   def self.parse_positions(local_file, cdata)
     xml_d = nil
     File.open(local_file, 'r') do |f|
       xml_d = Nokogiri::HTML(f.read)
     end
-    
+
     positions = [ ]
     unless xml_d.nil?
       xml_d.search('div.boxheader center').each do |boxh|
@@ -173,10 +173,10 @@ module ErParser
           html_id = nil
           xml_file = nil
           candidates = nil
-          
+
           boxh.search('a').each do |link|
             position_title = link.content
-            
+
             # javascript:Show(1050335);
             if link['href'] =~ /\Ajavascript\:Show\((\d+)\)\;\Z/
               html_id = $~[1]
@@ -212,13 +212,13 @@ module ErParser
               #   <th class="boxtd_big" align="center">Party</th>
               #   <th class="boxtd_big" align="center">Votes</th>
               #   <th class="boxtd_big" align="center">Percentage</th>
-              # </tr>              
+              # </tr>
               if candidate_data.size == 4
                 candidates.push(candidate_data)
               end
             end
           end
-          
+
           unless xml_file.nil? || candidates.nil?
             # puts "    + Found #{position_id}, #{position_title}, #{xml_file}, #{html_id}, #{candidates.size} candidate(s)"
             positions.push([ cluster_id, position_id, position_title, xml_file, html_id, candidates ])
@@ -229,13 +229,13 @@ module ErParser
         end
       end
     end
-    
+
     positions
   end
-  
+
   def self.parse_clusters_file(clusters_file)
     found_clusters = [ ]
-    
+
     puts "* Parsing #{clusters_file}"
     rt = benchmark do
       FasterCSV.foreach(clusters_file) do |row|
@@ -248,7 +248,7 @@ module ErParser
 
     found_clusters
   end
-  
+
   def self.download_clusters!(argv)
     options = parse_arguments(argv)
 
@@ -283,7 +283,7 @@ module ErParser
         break if success == this_batch.size
         break if tries_left <= 0
         tries_left -= 1
-        
+
         puts "  - Retrying (left: #{tries_left}) only #{success} out of #{this_batch.size}"
       end
 
@@ -294,13 +294,13 @@ module ErParser
   def self.download_clusters_per_batch(dest_dir, clusters, batch_size = DOWNLOAD_BATCH_SIZE)
     success = 0
     clusters_info = { }
-    
+
     clusters.each do |cdata|
       html_file = cdata[1]
       local_file = File.join(dest_dir, html_file)
       etag_file = File.join(dest_dir, "#{html_file}.etag")
       source_url = File.join(ERSOURCE_URL, html_file)
-      
+
       if File.exists?(local_file)
         mtime = File.mtime(local_file).getutc
       else
@@ -312,7 +312,7 @@ module ErParser
       else
         etag = nil
       end
-      
+
       clusters_info[cdata[0]] = { :html_file => html_file,
         :source_url => source_url,
         :mtime => mtime,
@@ -324,7 +324,7 @@ module ErParser
 
     # force a re-try if we're not able to get all files
     return -1 if source_mtimes.size != clusters_info.size
-    
+
     clusters_for_dl = [ ]
     clusters_info.each do |cid, ci|
       mtime, etag = source_mtimes.shift
@@ -336,17 +336,17 @@ module ErParser
         if ci[:mtime].nil?
           mode = "N"
           clusters_for_dl.push(ci)
-          
+
         # etag mismatch
         elsif ci[:etag] != ci[:source_etag]
           ci[:mode] = 'U'
           clusters_for_dl.push(ci)
-          
+
         # mtime mismatch
         elsif ci[:mtime] < ci[:source_mtime]
           ci[:mode] = 'U'
           clusters_for_dl.push(ci)
-          
+
         # else do nothing
         else
           mode = nil
@@ -374,33 +374,33 @@ module ErParser
     clusters.each do |ci|
       html_file = ci[:html_file]
       etag_file = File.join(dest_dir, "#{html_file}.etag")
-      
+
       local_file = File.join(dest_dir, html_file)
       url = ci[:source_url]
       request_options = { :method => :get }
       request_options[:headers] = { }
-      
+
       unless ci[:etag].nil?
         request_options[:headers]['If-None-Match'] = ci[:etag]
       end
-      
+
       r = Typhoeus::Request.new(url, :timeout => 1000 * 120)
       r.on_complete do |resp|
         replied += 1
         progress = "#{replied}/#{clusters.size}"
-        
+
         if resp.code == 200
           # let's get the source time from source site
           source_mtime = to_time(resp.headers_hash['Last-Modified'])
           etag = resp.headers_hash['ETag']
           length = resp.headers_hash['Content-Length']
-          
+
           puts "    + (#{progress} - #{sprintf('%.2f', resp.time)}s) writing #{html_file}, #{length}, #{source_mtime}, #{etag}"
           File.open(local_file, "w") { |f| f.write(resp.body) }
-          
+
           # let's write the etag for later checking
           File.open(etag_file, "w") { |f| f.write(etag) }
-          
+
           # let's set the mtime of the local file
           File.utime(Time.now, source_mtime.getlocal, local_file)
 
@@ -413,6 +413,8 @@ module ErParser
           puts "    + (#{progress}) 404! #{url}"
         elsif resp.code == 0
           puts "    + (#{progress}) took to long! #{url}"
+        elsif [ 502, 503, 504 ].include?(resp.code)
+          puts "    + (#{progress}) looks like temporary gateway error #{resp.code}, re-trying"
         else
           raise "Got HTTP response #{r.url}: #{resp.code}, #{resp.body}"
         end
@@ -427,7 +429,7 @@ module ErParser
 
     success
   end
-  
+
   def self.get_clusters_modification_time(urls)
     h = Typhoeus::Hydra.hydra
 
@@ -438,16 +440,16 @@ module ErParser
       requests.push(r)
       h.queue(r)
     end
-    
+
     rt = benchmark { h.run }
     puts(sprintf("    * took %.5f sec(s)", rt))
-    
+
     requests.each do |r|
       resp = r.response
       if resp.code == 200
         source_mtime = to_time(resp.headers_hash['Last-Modified'])
         etag = resp.headers_hash['ETag']
-        
+
         source_mtimes.push([ source_mtime, etag ])
       elsif resp.code == 404
         puts "    - 404! #{r.url}"
@@ -470,7 +472,7 @@ module ErParser
   def self.benchmark(&block)
     [ Benchmark.measure(&block).real, 0.0001 ].max
   end
-  
+
   def self.parse_for_clusters!(argv)
     options = parse_arguments(argv)
 
@@ -479,7 +481,7 @@ module ErParser
 
     raise "Please specify the directory mirror of the election results website" if dir.nil?
     raise "Please specify a target path for the cluster_file" if cluster_file.nil?
-    
+
     puts "Working on #{dir}"
 
     html_files = [ ]
@@ -515,7 +517,7 @@ module ErParser
     options = { }
     xml_d = nil
     found_clusters = [ ]
-    
+
     File.open(html_file, 'r') do |f|
       xml_d = Nokogiri::HTML(f.read)
     end
@@ -526,24 +528,24 @@ module ErParser
 
       cluster_info = [ ]
       # retrieve nagivation items
-      xml_d.search('div.locationBar a').each do |link_tag|        
+      xml_d.search('div.locationBar a').each do |link_tag|
         nav_link = File.basename(link_tag['href'])
-        nav_cluster_id = $~[1] if nav_link =~ /\Ares_reg(\d+).html\Z/        
+        nav_cluster_id = $~[1] if nav_link =~ /\Ares_reg(\d+).html\Z/
         nav_link_name = link_tag.content
-        
+
         cluster_info += [ nav_cluster_id, nav_link, nav_link_name ]
       end
 
       puts "  + #{link} = #{cluster_id}, #{cluster_info.inspect}"
       found_clusters.push([ cluster_id, link ] + cluster_info)
-      
+
       xml_d.search('li.region-nav-item a').each do |link_tag|
         link = File.basename(link_tag['href'])
         cluster_id = $~[1] if link =~ /\Ares_reg(\d+).html\Z/
         link_name = link_tag.content
 
         this_cluster_info = cluster_info + [ cluster_id, link, link_name ]
-        
+
         puts "  + #{link} = #{cluster_id}, #{this_cluster_info.inspect}"
 
         found_clusters.push([ cluster_id, link ] + this_cluster_info)

@@ -457,6 +457,9 @@ module ErParser
       elsif resp.code == 0
         puts "    - too long! #{r.url}"
         break
+      elsif [ 502, 503, 504 ].include?(resp.code)
+        puts "    - temporary gateway error #{r.url}, re-trying"
+        break
       else
         raise "Got HTTP response #{r.url}: #{resp.code}, #{resp.body}"
       end

@@ -48,7 +48,7 @@ module ErParser
     puts "* Found #{clusters_for_parsing.size} clusters for parsing"
 
     # for debugging purposes
-    # clusters_for_parsing = clusters_for_parsing.slice(0, 100)
+    clusters_for_parsing = clusters_for_parsing.slice(0, 100)
     
     concurrency_count = CONCURRENCY
     total_count = clusters_for_parsing.size
@@ -106,53 +106,55 @@ module ErParser
     all_positions_candidates_file = options[:all_positions_candidates_file]
     
     worked = 0
-    all_positions = [ ]
-    all_positions_candidates = [ ]
+    all_positions_h = nil
+    all_positions_size = 0
+    all_positions_candidates_h = nil
+    all_positions_candidates_size = 0
     
-    clusters_for_parsing.each do |cdata|
-      html_file = cdata[1]
-      local_file = File.join(dest_dir, html_file)
+    begin
+      all_positions_h = FasterCSV.open(all_positions_file, 'w')
+      all_positions_size = 0
+      all_positions_candidates_h = FasterCSV.open(all_positions_candidates_file, 'w')
+      all_positions_candidates_size = 0
       
-      if File.exists?(local_file)
-        worked += 1
+      clusters_for_parsing.each do |cdata|
+        html_file = cdata[1]
+        local_file = File.join(dest_dir, html_file)
         
-        puts "* (#{worked}/#{clusters_for_parsing.size}) Working on #{html_file}"
-        positions = parse_positions(local_file, cdata)
-        
-        unless positions.empty?
-          puts "    + Found #{positions.size} positions"
+        if File.exists?(local_file)
+          worked += 1
           
-          positions.each do |po|
-            candidates = po.pop
-            candidates.each do |can|
-              all_positions_candidates.push([ po[0], po[1], can[0], can[1], can[2], can[3] ])
+          puts "* (#{worked}/#{clusters_for_parsing.size}) Working on #{html_file}"
+          positions = parse_positions(local_file, cdata)
+          
+          unless positions.empty?
+            puts "    + Found #{positions.size} positions"
+            
+            positions.each do |po|
+              candidates = po.pop
+              candidates.each do |can|
+                all_positions_candidates_h << [ po[0], po[1], can[0], can[1], can[2], can[3] ]
+                all_positions_candidates_size += 1
+              end
+              
+              all_positions_h << po
+              all_positions_size += 1
             end
+          else
+            puts "    + Found no positions"
           end
-          
-          all_positions += positions
         else
-          puts "    + Found no positions"
+          puts "* Skippng on #{html_file}, not found"
         end
-      else
-        puts "* Skippng on #{html_file}, not found"
       end
+    ensure
+      all_positions_h.close unless all_positions_h.nil?
+      all_positions_candidates_h.close unless all_positions_candidates_h.nil?
     end
     
     puts "* Worked on #{worked} clusters out of #{clusters_for_parsing.size}"
-    
-    puts "* Found #{all_positions.size} total positions"
-    FasterCSV.open(all_positions_file, 'w') do |f|
-      all_positions.each do |po|
-        f << po
-      end
-    end
-    
-    puts "* Found #{all_positions_candidates.size} unique positions and candidates"
-    FasterCSV.open(all_positions_candidates_file, 'w') do |f|
-      all_positions_candidates.each do |pc_data|
-        f << pc_data
-      end
-    end
+    puts "* Found #{all_positions_size} total positions"
+    puts "* Found #{all_positions_candidates_size} unique positions and candidates"
   end
   
   def self.parse_positions(local_file, cdata)

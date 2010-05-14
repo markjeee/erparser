@@ -149,8 +149,8 @@ more people can view the data in different perspective. The data don't
 change, it don't lie. It is as it is, and anyone who has some skills
 related to parsing CSV, import it to a database (mySQL), can run
 statistics against it, and see some trends. Instead of giving a few
-people access to this data, how about the entire country, and ever
-weirdo who can type a code in a screen can do their own analysis. For
+people access to this data, how about the entire country, and everyone
+who can type a code in a screen can do their own analysis. For
 me, that's a bit exciting. For sometime, we always wonder how the
 election turns out in a particular town, what's the vote
 distribution. It would have been nice if the precinct level where kept
@@ -160,4 +160,9 @@ level of statistics.
 Anyway, let's not get over excited ourselves. It took a while to parse
 the data, and i'm happy i was able to do it. Hopefully, something good
 will turn out from this.
+
+For the paranoid, this doesn't change any of the election data. It
+will create a copy of the data that is already published
+publicly. Nothing it can do to change the data inside COMELEC's
+servers.
 

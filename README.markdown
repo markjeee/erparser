@@ -1,4 +1,4 @@
-== Overview ==
+# Overview
 
 Alrighty, here's a quick overview. This is a small script designed to
 spider the Election results website published by COMELEC, where you
@@ -13,7 +13,7 @@ HTML files, instead of a person hand-coding all the numbers. And from
 that, if the files were produced by a software, then a pattern can be
 determined and a reverse engineer to parse the data is possible.
 
-== Requirements ==
+# Requirements
 
 The script is built using Ruby, and uses the following standard
 libraries:
@@ -39,7 +39,7 @@ libxml2, libxslt, libcurl. When you install these gems, it will also
 notify you either with a message or a horrofic fatal error, if you
 don't have these libraries.
 
-== Usage ==
+# Usage
 
 You will probably need a mirror of the entire site. I didn't designed
 the parsing with on-demand downloading. I believe that is just going
@@ -49,7 +49,7 @@ Anyway, if you don't have the entire site, don't worry, there's
 actually no need to have anymore, though having it, saves you the time
 from downloading.
 
-== 3 types of scripts ==
+# Scripts
 
 There are 3 kinds of scripts in this package.
 
@@ -60,7 +60,8 @@ and their heirarchy in the region.
 
 Sample execution:
 
-# bin/parse_clusters electionresults.ibanangayon.ph/ var/parsed_clusters.csv
+> bin/parse_clusters electionresults.ibanangayon.ph/ \
+                     var/parsed_clusters.csv
 
 *bin/download_clusters*
 
@@ -76,7 +77,8 @@ This script *requires* a parsed_cluster.csv file.
 
 Sample execution:
 
-# bin/download_clusters electionresults.ibanangayon.ph/ var/parsed_clusters.csv 1
+> bin/download_clusters electionresults.ibanangayon.ph/ \
+                        var/parsed_clusters.csv 1
 
 1 here signifies the batch. Just in case you want to start downloading
 in the middle of the entire list. It's optional. If it's not
@@ -96,7 +98,7 @@ This script *requires* a parsed_cluster.csv file.
 
 Sample execution:
 
-# bin/parse_positions electionresults.ibanangayon.ph/ \
+> bin/parse_positions electionresults.ibanangayon.ph/ \
                       var/parsed_clusters.csv \
                       var/all_postions.csv \
                       var/all_positions_candidates.csv

@@ -29,8 +29,8 @@ module ErParser
 
     dest_dir = argv[0]
     clusters_file = argv[1]
-    all_positions_file = argv[3]
-    all_positions_candidates_file = argv[5]
+    all_positions_file = argv[2]
+    all_positions_candidates_file = argv[3]
     
     raise "Please specify the directory mirror of the election results website" if dest_dir.nil?
     raise "Please specify a target path for the clusters_file" if clusters_file.nil?

@@ -23,7 +23,6 @@ module ErParser
   DOWNLOAD_BATCH_SIZE = 100
   ERSOURCE_URL = "http://electionresults.ibanangayon.ph"
 
-  # bin/parse_positions ../electionresults.ibanangayon.ph/ var/found_clusters.csv var/unique_positions.csv var/all_positions.csv
   def self.parse_for_positions!(argv)
     options = parse_arguments(argv)
 
@@ -248,7 +247,6 @@ module ErParser
     found_clusters
   end
   
-  # e.g. bin/download_clusters var/found_clusters.csv
   def self.download_clusters!(argv)
     options = parse_arguments(argv)
 
@@ -471,7 +469,6 @@ module ErParser
     [ Benchmark.measure(&block).real, 0.0001 ].max
   end
   
-  # e.g bin/parse_clusters electionresults.ibanangayon.ph/ var/found_clusters.csv
   def self.parse_for_clusters!(argv)
     options = parse_arguments(argv)
 

@@ -54,13 +54,13 @@ Ok, in a nutshell:
 * Download the files, use the parsed_clusters.csv.gz file as a seed
   for the list of files to download.
 
-    $ gunzip var/parsed_clusters.csv.gz var/parsed_clusters.csv
+    gunzip var/parsed_clusters.csv.gz var/parsed_clusters.csv
 
 * Then run the download script:
 
-    $ mkdir electionresults.ibanangayon.ph
-    $ bin/download_clusters electionresults.ibanangayon.ph/ \
-                            var/parsed_clusters.csv
+    mkdir electionresults.ibanangayon.ph
+    bin/download_clusters electionresults.ibanangayon.ph/ \
+                          var/parsed_clusters.csv
 
 * Sit back, relax. From scratch and with a big enough bandwidth, it
   should take you about at least 8 hours to download everything. The
@@ -68,9 +68,9 @@ Ok, in a nutshell:
   which batch it last stopped. To avoid gaps, just re-download from
   one batch before.
 
-    $ bin/download_clusters electionresults.ibanangayon.ph/ \
-                            var/parsed_clusters.csv \
-                            200
+    bin/download_clusters electionresults.ibanangayon.ph/ \
+                          var/parsed_clusters.csv \
+                          200
 
   From my experience, i think that's at least 700+ batches to download
   everything.
@@ -80,10 +80,10 @@ Ok, in a nutshell:
   hours on a quad-core, 8G machine. So best to go out or watch a movie
   or something.
 
-    $ bin/parse_positions electionresults.ibanangayon.ph/ \
-                          var/parsed_clusters.csv \
-                          var/all_positions.csv \
-                          var/all_positions_candidates.csv
+    bin/parse_positions electionresults.ibanangayon.ph/ \
+                        var/parsed_clusters.csv \
+                        var/all_positions.csv \
+                        var/all_positions_candidates.csv
 
 * After everything is done, you should have two CSV files under the
   var directory.
